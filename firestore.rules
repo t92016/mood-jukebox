@@ -1,0 +1,22 @@
+rules_version = '2';
+// 心情點唱機 Firestore 安全規則
+// 部署方式：Firebase Console → Firestore Database → 規則 → 貼上後發布
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 歌曲快取池：任何人可讀、可新增，但不可修改/刪除（防快取被污染）
+    match /SongsCache/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // 心情日誌：任何人可讀（點唱牆用）、可新增，不可修改/刪除
+    // 注意：不收集任何個人資料，只有心情文字 + 推薦結果
+    match /MoodLogs/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+  }
+}

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>心情點唱機 🎵</title>
+  <meta name="description" content="告訴點唱機你現在的心情，讓它為你點一首歌！">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="container">
+
+    <header class="hero">
+      <h1>🎵 心情點唱機</h1>
+      <p class="subtitle">告訴我你現在的心情，我來幫你點一首歌！</p>
+    </header>
+
+    <section class="mood-panel" aria-label="選擇心情">
+      <div class="mood-buttons" id="moodButtons">
+        <button class="mood-btn" data-mood="開心" type="button">😊<span>開心</span></button>
+        <button class="mood-btn" data-mood="難過" type="button">😢<span>難過</span></button>
+        <button class="mood-btn" data-mood="生氣" type="button">😤<span>生氣</span></button>
+        <button class="mood-btn" data-mood="想睡" type="button">😴<span>想睡</span></button>
+        <button class="mood-btn" data-mood="緊張" type="button">😖<span>緊張</span></button>
+        <button class="mood-btn" data-mood="無聊" type="button">😐<span>無聊</span></button>
+      </div>
+
+      <form id="moodForm" class="mood-form">
+        <input id="moodInput" type="text" maxlength="200"
+               placeholder="或是……自己說說現在的心情？"
+               autocomplete="off" aria-label="輸入心情">
+        <button type="submit" id="submitBtn">點歌 🎶</button>
+      </form>
+    </section>
+
+    <section id="statusArea" class="status-area" hidden aria-live="polite">
+      <div class="spinner"></div>
+      <p id="statusText"></p>
+    </section>
+
+    <section id="resultArea" class="result-area" hidden>
+      <div class="song-card">
+        <div class="song-info">
+          <p class="card-label">🎁 為你點播</p>
+          <h2 id="songTitle"></h2>
+          <p id="songArtist" class="artist"></p>
+          <p id="songReason" class="reason"></p>
+        </div>
+        <div class="player-wrap">
+          <div id="player"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wall" aria-label="心情點唱牆">
+      <h2>🌸 心情點唱牆</h2>
+      <p class="wall-hint">看看大家最近點了什麼歌</p>
+      <ul id="wallList" class="wall-list"></ul>
+    </section>
+
+    <footer class="footer">
+      <p>用音樂陪伴每一種心情 ☁️</p>
+    </footer>
+
+  </main>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

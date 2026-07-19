@@ -1,0 +1,272 @@
+/* ============================================================
+   心情點唱機 — 溫馨日式可愛風
+   色系：奶油底 + 櫻花粉 + 暖橘點綴
+   ============================================================ */
+
+:root {
+  --bg: #fff8f0;
+  --bg-soft: #fff1e3;
+  --card: #ffffff;
+  --ink: #5b4a42;
+  --ink-light: #9a857a;
+  --pink: #ffb7c5;
+  --pink-deep: #ff8fa8;
+  --orange: #ffcf9f;
+  --mint: #c8e7d8;
+  --shadow: 0 4px 16px rgba(210, 160, 140, 0.18);
+  --radius: 20px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Zen Maru Gothic", "Noto Sans TC", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+/* ---------- 標題區 ---------- */
+.hero { text-align: center; padding: 2rem 0 1.5rem; }
+
+.hero h1 {
+  font-size: clamp(1.8rem, 6vw, 2.6rem);
+  font-weight: 900;
+  color: var(--ink);
+  text-shadow: 2px 2px 0 var(--pink);
+}
+
+.subtitle {
+  margin-top: 0.5rem;
+  color: var(--ink-light);
+  font-size: clamp(0.95rem, 3vw, 1.1rem);
+}
+
+/* ---------- 心情按鈕 ---------- */
+.mood-panel {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  border: 3px dashed var(--pink);
+}
+
+.mood-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.mood-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-height: 72px;           /* 觸控目標 ≥ 44px */
+  padding: 0.75rem 0.5rem;
+  font-size: 1.7rem;
+  font-family: inherit;
+  background: var(--bg-soft);
+  border: 2px solid transparent;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.mood-btn span {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.mood-btn:hover { transform: translateY(-3px); background: var(--orange); }
+.mood-btn:active { transform: scale(0.96); }
+.mood-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ---------- 自由輸入 ---------- */
+.mood-form {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1.2rem;
+}
+
+.mood-form input {
+  flex: 1;
+  min-height: 48px;
+  padding: 0 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  border: 2px solid var(--pink);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--ink);
+  outline: none;
+}
+
+.mood-form input:focus { border-color: var(--pink-deep); }
+
+.mood-form button {
+  min-height: 48px;
+  min-width: 96px;
+  padding: 0 1.4rem;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: #fff;
+  background: var(--pink-deep);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.mood-form button:hover { background: #ff7a99; transform: translateY(-2px); }
+.mood-form button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ---------- 狀態提示 ---------- */
+.status-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-soft);
+  border-radius: var(--radius);
+  font-weight: 500;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--pink);
+  border-top-color: var(--pink-deep);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- 歌曲結果卡 ---------- */
+.result-area { margin-top: 1.5rem; }
+
+.song-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  border-top: 6px solid var(--pink-deep);
+}
+
+.song-info { padding: 1.25rem 1.5rem 1rem; }
+
+.card-label {
+  font-size: 0.85rem;
+  color: var(--pink-deep);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.song-info h2 {
+  font-size: clamp(1.3rem, 4.5vw, 1.7rem);
+  margin-top: 0.25rem;
+}
+
+.artist { color: var(--ink-light); font-weight: 500; }
+
+.reason {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--bg-soft);
+  border-left: 4px solid var(--orange);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.player-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #2b2b2b;
+}
+
+.player-wrap iframe,
+.player-wrap #player {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- 心情點唱牆 ---------- */
+.wall { margin-top: 2rem; }
+
+.wall h2 {
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.wall-hint {
+  font-size: 0.85rem;
+  color: var(--ink-light);
+  margin-bottom: 0.75rem;
+}
+
+.wall-list {
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.wall-list li {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 0.7rem 1rem;
+  box-shadow: var(--shadow);
+  font-size: 0.92rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.6rem;
+  align-items: baseline;
+}
+
+.wall-list .wall-mood { font-weight: 700; }
+.wall-list .wall-song { color: var(--pink-deep); font-weight: 500; }
+.wall-list .wall-empty { color: var(--ink-light); justify-content: center; }
+
+/* ---------- 頁尾 ---------- */
+.footer {
+  text-align: center;
+  margin-top: 2.5rem;
+  color: var(--ink-light);
+  font-size: 0.85rem;
+}
+
+/* ============================================================
+   響應式：手機 / 平板 / 電腦
+   ============================================================ */
+
+/* 手機 ≤ 480px：按鈕 2 欄、表單直向 */
+@media (max-width: 480px) {
+  .mood-buttons { grid-template-columns: repeat(2, 1fr); }
+  .mood-form { flex-direction: column; }
+  .mood-form button { width: 100%; }
+}
+
+/* 平板 481–768px */
+@media (min-width: 481px) and (max-width: 768px) {
+  .container { padding: 1.5rem 1.5rem 3rem; }
+}
+
+/* 電腦 ≥ 769px */
+@media (min-width: 769px) {
+  .container { padding-top: 2.5rem; }
+}

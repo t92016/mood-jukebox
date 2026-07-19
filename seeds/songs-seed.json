@@ -1,0 +1,51 @@
+{
+  "說明": "預填歌曲清單：執行 npm run seed 時，會用 YouTube API 搜尋這些歌的 videoId 並寫入 Firestore SongsCache，解決冷啟動配額問題。全部是適合兒童、YouTube 上容易找到的知名華語歌。",
+  "開心": [
+    { "song": "稻香", "artist": "周杰倫" },
+    { "song": "乾杯", "artist": "五月天" },
+    { "song": "小情歌", "artist": "蘇打綠" },
+    { "song": "青春修煉手冊", "artist": "TFBOYS" },
+    { "song": "愛你", "artist": "王心凌" },
+    { "song": "大魚", "artist": "周深" }
+  ],
+  "難過": [
+    { "song": "小幸運", "artist": "田馥甄" },
+    { "song": "知足", "artist": "五月天" },
+    { "song": "晴天", "artist": "周杰倫" },
+    { "song": "魚仔", "artist": "盧廣仲" },
+    { "song": "你，好不好？", "artist": "周興哲" },
+    { "song": "慢慢等", "artist": "韋禮安" }
+  ],
+  "生氣": [
+    { "song": "離開地球表面", "artist": "五月天" },
+    { "song": "本草綱目", "artist": "周杰倫" },
+    { "song": "光年之外", "artist": "G.E.M.鄧紫棋" },
+    { "song": "不潮不用花錢", "artist": "林俊傑" },
+    { "song": "快樂崇拜", "artist": "潘瑋柏" },
+    { "song": "致青春", "artist": "八三夭" }
+  ],
+  "想睡": [
+    { "song": "星晴", "artist": "周杰倫" },
+    { "song": "早安，晨之美", "artist": "盧廣仲" },
+    { "song": "旅行的意義", "artist": "陳綺貞" },
+    { "song": "Beautiful Love", "artist": "蔡健雅" },
+    { "song": "Love Song", "artist": "方大同" },
+    { "song": "你啊你啊", "artist": "魏如萱" }
+  ],
+  "緊張": [
+    { "song": "蝸牛", "artist": "周杰倫" },
+    { "song": "頑固", "artist": "五月天" },
+    { "song": "隱形的翅膀", "artist": "張韶涵" },
+    { "song": "最初的夢想", "artist": "范瑋琪" },
+    { "song": "不為誰而作的歌", "artist": "林俊傑" },
+    { "song": "海闊天空", "artist": "信樂團" }
+  ],
+  "無聊": [
+    { "song": "牛仔很忙", "artist": "周杰倫" },
+    { "song": "派對動物", "artist": "五月天" },
+    { "song": "李白", "artist": "李榮浩" },
+    { "song": "披星戴月的想你", "artist": "告五人" },
+    { "song": "傷心的人別聽慢歌", "artist": "五月天" },
+    { "song": "還是會", "artist": "韋禮安" }
+  ]
+}
