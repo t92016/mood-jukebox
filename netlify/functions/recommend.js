@@ -8,23 +8,37 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = "llama-3.3-70b-versatile";
 
 // 簡易意圖分類器：比 AI 更可靠，先判斷 obvious 情況
+// 全部使用 Unicode 碼點判斷，避免 esbuild 打包時中文字元被破壞
 function classifyIntent(input) {
   const m = input.trim();
 
+  // 輔助：判斷字串是否包含中文字（CJK Unified Ideographs）
+  const hasChinese = (s) => {
+    for (let i = 0; i < s.length; i++) {
+      const cp = s.codePointAt(i);
+      if (cp >= 0x4e00 && cp <= 0x9fff) return true;
+    }
+    return false;
+  };
+
   // === play：明確指定歌手 + 歌曲，或說了「我想聽/播放/點播 + 歌名」===
-  const playKeywords = /我想聽|播放|點播|聽一下|來一首|給我|放一首|找一下/;
-  if (playKeywords.test(m) && m.length > 3) return "play";
-  // "歌手 歌曲" 格式：兩個中文詞組之間有空格，且整體不太長（避免把心情描述當成 play）
+  const playCmds = ["我想聽", "播放", "點播", "聽一下", "來一首", "給我", "放一首", "找一下"];
+  if (playCmds.some((cmd) => m.includes(cmd)) && m.length > 3) return "play";
+
+  // "歌手 歌曲" 格式：兩個詞之間有空格，且至少一個詞含中文
   if (m.includes(" ") && m.length > 4 && m.length <= 20) {
     const parts = m.split(/\s+/).filter(Boolean);
-    // 兩個詞，且至少一個詞包含中文字，才視為「歌手 歌曲」
-    if (parts.length === 2 && parts.some((p) => /[\u4e00-\u9fa5]/.test(p))) return "play";
+    if (parts.length === 2 && parts.some(hasChinese)) return "play";
   }
-  if (/[\u4e00-\u9fa5]+[-–—][\u4e00-\u9fa5]+/.test(m)) return "play"; // "周杰倫-晴天"
+
+  // "周杰倫-晴天" 格式（連字符分隔）
+  const dashParts = m.split(/[-–—]/);
+  if (dashParts.length === 2 && dashParts.every(hasChinese)) return "play";
 
   // === browse：只輸入歌手名字（沒有空格、沒有情緒詞、長度適中）===
-  const moodKeywords = /開心|難過|生氣|緊張|無聊|想睡|累|悶|煩|傷心|難受|興奮|激動|平靜|放鬆|壓力|考試|成績|朋友|家人|愛|喜歡|討厭|害怕|擔心|焦慮|憤怒|失落|沮喪|疲憊|舒服|溫暖|感動|驕傲|自信|勇敢|堅強|開心|快樂|難過|傷心|生氣|無聊/;
-  if (!moodKeywords.test(m) && !m.includes(" ") && m.length >= 2 && m.length <= 8) {
+  const moodWords = ["開心", "難過", "生氣", "緊張", "無聊", "想睡", "累", "悶", "煩", "傷心", "難受", "興奮", "激動", "平靜", "放鬆", "壓力", "考試", "成績", "朋友", "家人", "愛", "喜歡", "討厭", "害怕", "擔心", "焦慮", "憤怒", "失落", "沮喪", "疲憊", "舒服", "溫暖", "感動", "驕傲", "自信", "勇敢", "堅強", "快樂"];
+  const isMood = moodWords.some((w) => m.includes(w));
+  if (!isMood && !m.includes(" ") && m.length >= 2 && m.length <= 8) {
     return "browse";
   }
 
