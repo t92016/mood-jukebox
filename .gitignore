@@ -3,3 +3,12 @@ node_modules/
 .netlify/
 dist/
 *.log
+
+# 測試與截圖暫存檔
+test-*.mjs
+test-*.png
+test-screenshots/
+test-screenshots2/
+mood-jukebox-*.png
+.playwright-mcp/
+deno.lock
