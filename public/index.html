@@ -44,13 +44,42 @@
     <section id="resultArea" class="result-area" hidden>
       <div class="song-card">
         <div class="song-info">
-          <p class="card-label">🎁 為你點播</p>
+          <p class="card-label" id="resultLabel">🎁 為你點播</p>
           <h2 id="songTitle"></h2>
           <p id="songArtist" class="artist"></p>
           <p id="songReason" class="reason"></p>
         </div>
+        <!-- 歌手瀏覽模式：歌曲下拉選單 -->
+        <div id="browseWrap" class="browse-wrap" hidden>
+          <p class="browse-hint">🎹 選一首想聽的歌吧！</p>
+          <select id="songSelect" class="song-select" aria-label="選擇歌曲">
+            <option value="" disabled selected>— 請選擇歌曲 —</option>
+          </select>
+          <button id="playSelectedBtn" class="play-selected-btn" type="button" disabled>播放選擇的歌曲 ▶</button>
+        </div>
+        <!-- 播放控制列 -->
+        <div class="controls-bar" id="controlsBar">
+          <button id="btnPrev" class="ctrl-btn" type="button" title="上一首" disabled>⏮</button>
+          <button id="btnPlayPause" class="ctrl-btn" type="button" title="播放/暫停" disabled>▶</button>
+          <button id="btnNext" class="ctrl-btn" type="button" title="下一首" disabled>⏭</button>
+          <button id="btnRandom" class="ctrl-btn random-btn" type="button" title="隨機播放">🔀</button>
+          <div class="volume-wrap">
+            <span class="volume-icon">🔊</span>
+            <input id="volumeSlider" class="volume-slider" type="range" min="0" max="100" value="80" title="音量">
+          </div>
+        </div>
         <div class="player-wrap">
           <div id="player"></div>
+        </div>
+        <!-- 歌詞顯示 -->
+        <div id="lyricsWrap" class="lyrics-wrap" hidden>
+          <div class="lyrics-header" id="lyricsHeader">
+            <span class="lyrics-label">🎤 歌詞</span>
+            <button id="btnToggleLyrics" class="toggle-lyrics-btn" type="button">展開 ▼</button>
+          </div>
+          <div id="lyricsContent" class="lyrics-content collapsed">
+            <p id="lyricsText" class="lyrics-text">暫無歌詞，靜心聆聽音樂吧～ 🎵</p>
+          </div>
         </div>
       </div>
     </section>
@@ -67,6 +96,15 @@
 
   </main>
 
+  <script>
+    // YouTube IFrame API 回調佔位符：必須在 youtube.com/iframe_api 載入前定義
+    window.onYouTubeIframeAPIReady = function () {
+      window.ytApiReady = true;
+      if (typeof window._onYtReady === 'function') {
+        window._onYtReady();
+      }
+    };
+  </script>
   <script src="https://www.youtube.com/iframe_api"></script>
   <script type="module" src="js/app.js"></script>
 </body>

@@ -242,6 +242,180 @@ body {
 .wall-list .wall-song { color: var(--pink-deep); font-weight: 500; }
 .wall-list .wall-empty { color: var(--ink-light); justify-content: center; }
 
+/* ---------- 播放控制列 ---------- */
+.controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-soft);
+  border-top: 2px dashed var(--pink);
+}
+
+.ctrl-btn {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 1.2rem;
+  background: var(--card);
+  border: 2px solid var(--pink);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ctrl-btn:hover:not(:disabled) { background: var(--pink); transform: scale(1.08); }
+.ctrl-btn:active:not(:disabled) { transform: scale(0.95); }
+.ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--ink-light); }
+
+.random-btn { border-color: var(--orange); background: #fff8ee; }
+.random-btn:hover:not(:disabled) { background: var(--orange); }
+
+.volume-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+}
+
+.volume-icon { font-size: 1.1rem; }
+
+.volume-slider {
+  width: 100px;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--pink);
+  border-radius: 3px;
+  outline: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--pink-deep);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--pink-deep);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+/* ---------- 歌詞面板 ---------- */
+.lyrics-wrap {
+  border-top: 2px dashed var(--pink);
+  background: #fffefc;
+}
+
+.lyrics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 1.5rem;
+  cursor: pointer;
+}
+
+.lyrics-label {
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.toggle-lyrics-btn {
+  background: none;
+  border: none;
+  color: var(--ink-light);
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.lyrics-content {
+  padding: 0 1.5rem 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.lyrics-content.collapsed {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.lyrics-text {
+  line-height: 2;
+  font-size: 0.95rem;
+  color: var(--ink);
+  text-align: center;
+  white-space: pre-line;
+}
+
+/* ---------- 歌手瀏覽模式下拉選單 ---------- */
+.browse-wrap {
+  padding: 0 1.5rem 1.25rem;
+  text-align: center;
+}
+
+.browse-hint {
+  font-size: 0.9rem;
+  color: var(--ink-light);
+  margin-bottom: 0.5rem;
+}
+
+.song-select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--ink);
+  background: var(--bg);
+  border: 2px solid var(--pink);
+  border-radius: 12px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23ff8fa8' viewBox='0 0 16 16'%3E%3Cpath d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+.song-select:focus { border-color: var(--pink-deep); }
+
+.play-selected-btn {
+  margin-top: 0.8rem;
+  min-height: 44px;
+  padding: 0 1.6rem;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: #fff;
+  background: var(--pink-deep);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.play-selected-btn:hover { background: #ff7a99; transform: translateY(-2px); }
+.play-selected-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; background: var(--ink-light); }
+
 /* ---------- 頁尾 ---------- */
 .footer {
   text-align: center;
@@ -259,6 +433,10 @@ body {
   .mood-buttons { grid-template-columns: repeat(2, 1fr); }
   .mood-form { flex-direction: column; }
   .mood-form button { width: 100%; }
+  .controls-bar { flex-wrap: wrap; gap: 0.4rem; padding: 0.6rem; }
+  .volume-slider { width: 70px; }
+  .ctrl-btn { min-width: 40px; min-height: 40px; font-size: 1rem; }
+  .lyrics-content { max-height: 200px; }
 }
 
 /* 平板 481–768px */

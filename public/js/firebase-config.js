@@ -8,10 +8,10 @@
 // ============================================================
 
 export const firebaseConfig = {
-  apiKey: "PASTE_YOUR_API_KEY",
-  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
-  projectId: "PASTE_YOUR_PROJECT_ID",
-  storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID",
+  apiKey: "AIzaSyD-PYAuWwcC5t-ZNlrB5J3RUB59vyFvAqQ",
+  authDomain: "small-tools-firebase.firebaseapp.com",
+  projectId: "small-tools-firebase",
+  storageBucket: "small-tools-firebase.firebasestorage.app",
+  messagingSenderId: "423591001752",
+  appId: "1:423591001752:web:ea44db03fa620743db9aed"
 };

@@ -13,22 +13,64 @@ export default async (req) => {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
-  let song, artist;
+  let song, artist, mode;
   try {
     const body = await req.json();
+    mode = body.mode ?? "play"; // "play" | "browse"
     song = String(body.song ?? "").trim().slice(0, 100);
     artist = String(body.artist ?? "").trim().slice(0, 100);
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-  if (!song || !artist) {
-    return Response.json({ error: "song and artist are required" }, { status: 400 });
   }
 
   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) {
     console.error("YOUTUBE_API_KEY is not set");
     return Response.json({ error: "點唱機還沒準備好，請稍後再試" }, { status: 500 });
+  }
+
+  // ===== 模式一：browse（只搜歌手，回傳多首歌曲清單） =====
+  if (mode === "browse") {
+    if (!artist) {
+      return Response.json({ error: "artist is required for browse mode" }, { status: 400 });
+    }
+
+    const params = new URLSearchParams({
+      part: "snippet",
+      q: `${artist} 歌曲`,
+      type: "video",
+      videoCategoryId: "10",
+      safeSearch: "strict",
+      videoEmbeddable: "true",
+      maxResults: "12",
+      key: apiKey,
+    });
+
+    const ytRes = await fetch(`${SEARCH_URL}?${params}`);
+    if (!ytRes.ok) {
+      const text = await ytRes.text();
+      console.error(`YouTube API error ${ytRes.status}:`, text);
+      return Response.json({ error: "搜尋歌手時遇到問題，請稍後再試" }, { status: 502 });
+    }
+
+    const data = await ytRes.json();
+    const items = (data.items ?? [])
+      .filter((i) => i?.id?.videoId && i?.snippet?.title)
+      .map((i) => ({
+        videoId: i.id.videoId,
+        title: i.snippet.title,
+      }));
+
+    if (items.length === 0) {
+      return Response.json({ error: "找不到這位歌手的歌曲" }, { status: 404 });
+    }
+
+    return Response.json({ mode: "browse", artist, items });
+  }
+
+  // ===== 模式二：play（搜尋特定歌曲，回傳單一結果） =====
+  if (!song || !artist) {
+    return Response.json({ error: "song and artist are required" }, { status: 400 });
   }
 
   const params = new URLSearchParams({
@@ -56,6 +98,7 @@ export default async (req) => {
   }
 
   return Response.json({
+    mode: "play",
     videoId: item.id.videoId,
     title: item.snippet.title,
   });
