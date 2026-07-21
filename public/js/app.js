@@ -1,9 +1,10 @@
 // ============================================================
-// 心情點唱機 前端主邏輯
+// 心情點唱機 前端主邏輯 v2
 // 流程：心情輸入 → /api/recommend (Groq) → Firestore 快取檢查
 //       → （無快取時）/api/youtube-search → 寫入快取 + 心情日誌
 //       → YouTube IFrame 播放
 // ============================================================
+console.log("[Mood Jukebox] app.js v2 loaded");
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -155,8 +156,15 @@ async function loadWall() {
     }
     list.innerHTML = snap.docs
       .map((d) => d.data())
-      .map((log) => `<li><span class="wall-mood">「${escapeHtml(log.mood)}」</span> →
-        <span class="wall-song">🎵 ${escapeHtml(log.artist)}《${escapeHtml(log.song)}》</span></li>`)
+      .map((log) => {
+        const ytUrl = log.videoId
+          ? `https://www.youtube.com/watch?v=${escapeHtml(log.videoId)}`
+          : "#";
+        return `<li><span class="wall-mood">「${escapeHtml(log.mood)}」</span> →
+          <a class="wall-song" href="${ytUrl}" target="_blank" rel="noopener noreferrer">
+            🎵 ${escapeHtml(log.artist)}《${escapeHtml(log.song)}》
+          </a></li>`;
+      })
       .join("");
   } catch (err) {
     console.warn("載入點唱牆失敗", err);

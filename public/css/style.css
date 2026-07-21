@@ -239,7 +239,14 @@ body {
 }
 
 .wall-list .wall-mood { font-weight: 700; }
-.wall-list .wall-song { color: var(--pink-deep); font-weight: 500; }
+.wall-list .wall-song {
+  color: var(--pink-deep);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: text-decoration 0.15s ease;
+}
+.wall-list .wall-song:hover { text-decoration: underline; }
 .wall-list .wall-empty { color: var(--ink-light); justify-content: center; }
 
 /* ---------- 播放控制列 ---------- */
