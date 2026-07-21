@@ -242,12 +242,12 @@ function addChatBubble(role, text, rec = null) {
 
     const btnPlay = document.createElement("button");
     btnPlay.className = "chat-action-btn primary";
-    btnPlay.textContent = "▶ 播放這首";
+    btnPlay.textContent = `▶ 播放這首（${rec.artist}《${rec.song}》）`;
     btnPlay.addEventListener("click", () => confirmPlay());
 
     const btnChange = document.createElement("button");
     btnChange.className = "chat-action-btn secondary";
-    btnChange.textContent = "🔄 換一首";
+    btnChange.textContent = "🔄 換一首（AI 幫你選）";
     btnChange.addEventListener("click", () => sendChatMessage("幫我換一首"));
 
     actions.appendChild(btnPlay);
