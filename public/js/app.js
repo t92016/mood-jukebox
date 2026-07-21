@@ -157,13 +157,13 @@ async function loadWall() {
     list.innerHTML = snap.docs
       .map((d) => d.data())
       .map((log) => {
-        const ytUrl = log.videoId
-          ? `https://www.youtube.com/watch?v=${escapeHtml(log.videoId)}`
-          : "#";
+        const attrs = log.videoId
+          ? `data-video-id="${escapeHtml(log.videoId)}" data-song="${escapeHtml(log.song)}" data-artist="${escapeHtml(log.artist)}" tabindex="0" role="button"`
+          : "";
         return `<li><span class="wall-mood">「${escapeHtml(log.mood)}」</span> →
-          <a class="wall-song" href="${ytUrl}" target="_blank" rel="noopener noreferrer">
+          <span class="wall-song" ${attrs}>
             🎵 ${escapeHtml(log.artist)}《${escapeHtml(log.song)}》
-          </a></li>`;
+          </span></li>`;
       })
       .join("");
   } catch (err) {
@@ -452,6 +452,19 @@ $("lyricsHeader").addEventListener("click", toggleLyrics);
 $("btnToggleLyrics").addEventListener("click", (e) => {
   e.stopPropagation();
   toggleLyrics();
+});
+
+// 點唱牆點擊：在本頁播放器直接播放
+$("wallList").addEventListener("click", (e) => {
+  const songEl = e.target.closest(".wall-song");
+  if (!songEl) return;
+  const videoId = songEl.dataset.videoId;
+  const song = songEl.dataset.song;
+  const artist = songEl.dataset.artist;
+  if (!videoId || !song || !artist) return;
+  playVideo(videoId);
+  showResultCard({ title: `《${song}》`, artist, reason: "", hideBrowse: true });
+  updateLyrics(song, artist);
 });
 
 // 頁面載入：讀取點唱牆

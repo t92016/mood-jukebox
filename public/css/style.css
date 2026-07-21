@@ -242,11 +242,14 @@ body {
 .wall-list .wall-song {
   color: var(--pink-deep);
   font-weight: 500;
-  text-decoration: none;
   cursor: pointer;
-  transition: text-decoration 0.15s ease;
+  transition: transform 0.15s ease, color 0.15s ease;
+  display: inline-block;
 }
-.wall-list .wall-song:hover { text-decoration: underline; }
+.wall-list .wall-song:hover {
+  transform: scale(1.03);
+  color: #ff5f82;
+}
 .wall-list .wall-empty { color: var(--ink-light); justify-content: center; }
 
 /* ---------- 播放控制列 ---------- */
