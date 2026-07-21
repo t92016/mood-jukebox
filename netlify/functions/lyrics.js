@@ -1,11 +1,68 @@
 // ============================================================
-// 歌詞查詢代理（多源 fallback）
+// 歌詞查詢代理（多源 fallback + 容錯）
 // 主源：LRCLIB（https://lrclib.net/）— 免費、開源、支援時間戳
-// 備援：lyrics.ovh（https://lyrics.ovh/）— 社群推薦度高、免費 RESTful
+// 備援：lyrics.ovh（https://lyrics.ovh/）— 社群熱推、免費 RESTful
+// 策略：先試 "歌手+歌名"，若失敗再試只用 "歌名"
 // ============================================================
 
 const LRCLIB_SEARCH = "https://lrclib.net/api/search";
 const OVH_BASE = "https://api.lyrics.ovh/v1";
+
+// 輔助：統一 fetch 帶超時
+async function fetchWithTimeout(url, opts = {}, ms = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    const res = await fetch(url, { ...opts, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// 輔助：查詢 LRCLIB
+async function searchLRCLIB(q) {
+  try {
+    const res = await fetchWithTimeout(`${LRCLIB_SEARCH}?q=${encodeURIComponent(q)}`, {
+      headers: { "User-Agent": "MoodJukebox/1.0 (https://mood-jukebox.netlify.app)" },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      const first = data[0];
+      const lyrics = first.plainLyrics ?? "";
+      if (lyrics.trim()) {
+        return {
+          lyrics: lyrics.trim(),
+          source: "lrclib",
+          title: first.trackName,
+          artist: first.artistName,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("LRCLIB error:", err.message);
+  }
+  return null;
+}
+
+// 輔助：查詢 lyrics.ovh
+async function searchOVH(artist, song) {
+  try {
+    const res = await fetchWithTimeout(`${OVH_BASE}/${encodeURIComponent(artist)}/${encodeURIComponent(song)}`, {
+      headers: { "Accept": "application/json" },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const lyrics = data.lyrics ?? "";
+    if (lyrics.trim()) {
+      return { lyrics: lyrics.trim(), source: "lyrics.ovh", title: song, artist };
+    }
+  } catch (err) {
+    console.warn("lyrics.ovh error:", err.message);
+  }
+  return null;
+}
 
 export default async (req) => {
   if (req.method !== "GET" && req.method !== "POST") {
@@ -32,57 +89,25 @@ export default async (req) => {
     return Response.json({ error: "song and artist are required" }, { status: 400 });
   }
 
-  // ---------- 來源 1：LRCLIB ----------
-  try {
-    const q = encodeURIComponent(`${artist} ${song}`);
-    const res = await fetch(`${LRCLIB_SEARCH}?q=${q}`, {
-      headers: { "User-Agent": "MoodJukebox/1.0 (https://mood-jukebox.netlify.app)" },
-    });
+  let result = null;
 
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const first = data[0];
-        const lyrics = first.plainLyrics ?? "";
-        if (lyrics.trim()) {
-          return Response.json({
-            lyrics: lyrics.trim(),
-            source: "lrclib",
-            title: first.trackName ?? song,
-            artist: first.artistName ?? artist,
-          });
-        }
-      }
-    } else {
-      console.warn(`LRCLIB error ${res.status}`);
-    }
-  } catch (err) {
-    console.warn("LRCLIB fetch error:", err);
-  }
+  // 策略 1：LRCLIB 用 "歌手 歌名"
+  result = await searchLRCLIB(`${artist} ${song}`);
+  if (result) return Response.json(result);
 
-  // ---------- 來源 2：lyrics.ovh（社群熱門備援） ----------
-  try {
-    const ovhUrl = `${OVH_BASE}/${encodeURIComponent(artist)}/${encodeURIComponent(song)}`;
-    const res = await fetch(ovhUrl, { headers: { "Accept": "application/json" } });
-    if (res.ok) {
-      const data = await res.json();
-      const lyrics = data.lyrics ?? "";
-      if (lyrics.trim()) {
-        return Response.json({
-          lyrics: lyrics.trim(),
-          source: "lyrics.ovh",
-          title: song,
-          artist: artist,
-        });
-      }
-    } else {
-      console.warn(`lyrics.ovh error ${res.status}`);
-    }
-  } catch (err) {
-    console.warn("lyrics.ovh fetch error:", err);
-  }
+  // 策略 2：lyrics.ovh 用 "歌手 / 歌名"
+  result = await searchOVH(artist, song);
+  if (result) return Response.json(result);
 
-  // ---------- 都沒找到 ----------
+  // 策略 3：LRCLIB 只用 "歌名"（歌手可能錯誤）
+  result = await searchLRCLIB(song);
+  if (result) return Response.json(result);
+
+  // 策略 4：lyrics.ovh 只用 "歌名 / 歌手"（互換嘗試）
+  result = await searchOVH(song, artist);
+  if (result) return Response.json(result);
+
+  // 都沒找到
   return Response.json({
     lyrics: "",
     source: null,

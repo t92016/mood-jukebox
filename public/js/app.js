@@ -1,10 +1,10 @@
 // ============================================================
-// 心情點唱機 前端主邏輯 v6
+// 心情點唱機 前端主邏輯 v7
 // 流程：心情輸入 → /api/recommend (Groq) → Firestore 快取檢查
 //       → （無快取時）/api/youtube-search → 寫入快取 + 心情日誌
-//       → YouTube IFrame 播放 + /api/lyrics 多源歌詞（LRCLIB + lyrics.ovh）
+//       → YouTube IFrame 播放 + /api/lyrics 多源歌詞（LRCLIB + lyrics.ovh + 容錯）
 // ============================================================
-console.log("[Mood Jukebox] app.js v6 loaded — multi-source lyrics enabled");
+console.log("[Mood Jukebox] app.js v7 loaded — lyrics with artist fallback");
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -252,6 +252,8 @@ async function handleMood(mood) {
         reason: "",
         hideBrowse: false,
       });
+      // 保存原始查詢 artist，供 browse 選歌後解析真正的歌手名
+      $("songArtist").dataset.queryArtist = rec.artist;
       updateControlsState();
       return;
     }
@@ -292,20 +294,38 @@ function extractSongName(title) {
   return name;
 }
 
+// 從 YouTube 標題猜測歌手名稱（取 "歌手 - 歌名" 的前半段）
+function extractArtistName(title) {
+  let name = title
+    .replace(/\s*[-–—]\s*(Official|MV|M\/V|Audio|Lyric|Video|Music|Live|Cover|翻唱|官方|歌詞|完整版|HD|4K).*$/i, "")
+    .replace(/\s*\(.*?\)\s*/g, "")
+    .replace(/\s*【.*?】\s*/g, "")
+    .trim();
+  const parts = name.split(/\s*[-–—]\s*/);
+  if (parts.length >= 2) return parts[0].trim();
+  return "";
+}
+
 // 瀏覽模式：播放選中的歌曲
 async function playBrowseSelection(videoId) {
   const song = browseSongs.find((s) => s.videoId === videoId);
   if (!song) return;
 
-  const rec = { song: song.songName || song.title, artist: $("songArtist").textContent.replace(/^.*歌手\s*/, "").trim() };
+  // 從 YouTube 標題解析真正的歌手名，比用 UI 文字更準確
+  const artistFromTitle = extractArtistName(song.title);
+  const queryArtist = $("songArtist").dataset.queryArtist || "";
+  const rec = {
+    song: song.songName || extractSongName(song.title),
+    artist: artistFromTitle || queryArtist,
+  };
 
   // 隱藏下拉選單、顯示播放器
   $("browseWrap").hidden = true;
   playVideo(videoId);
 
-  // 寫入快取與日誌
+  // 寫入快取與日誌（用正確的歌手名）
   await saveCache(rec.song, rec.artist, videoId, song.title);
-  logMood("browse: " + rec.artist, rec, videoId).then(loadWall).catch(() => {});
+  logMood("browse: " + (queryArtist || rec.artist), rec, videoId).then(loadWall).catch(() => {});
 }
 
 // ---------- 播放狀態與控制 ----------
