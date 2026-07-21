@@ -221,7 +221,7 @@ async function handleMood(mood) {
       logMood(mood, rec, videoId).then(loadWall).catch(() => {});
       showResultCard({ title: `《${rec.song}》`, artist: rec.artist, reason: rec.reason });
       playVideo(videoId);
-      updateLyrics(rec.song, rec.artist);
+      await updateLyrics(rec.song, rec.artist);
       return;
     }
 
@@ -269,7 +269,7 @@ async function handleMood(mood) {
     logMood(mood, rec, videoId).then(loadWall).catch(() => {});
     showResultCard({ title: `《${rec.song}》`, artist: rec.artist, reason: rec.reason });
     playVideo(videoId);
-    updateLyrics(rec.song, rec.artist);
+    await updateLyrics(rec.song, rec.artist);
   } catch (err) {
     console.error(err);
     showStatus(`😴 ${err.message || "點唱機打盹了，再試一次吧！"}`);
@@ -312,20 +312,23 @@ async function playBrowseSelection(videoId) {
 let currentBrowseIndex = -1;
 let isPlaying = false;
 
-// 簡易歌詞庫（可持續擴充）
-const lyricsDB = {
-  "周杰倫 - 晴天": "故事的小黃花\n從出生那年就飄著\n童年的盪鞦韆\n隨記憶一直晃到現在\n\nRe So So Si Do Si La\nSo La Si Si Si Si La Si La So\n\n吹著前奏望著天空\n我想起花瓣試著掉落\n\n為你翹課的那一天\n花落的那一天\n教室的那一間\n我怎麼看不見\n消失的下雨天\n我好想再淋一遍\n\n沒想到失去的勇氣我還留著\n好想再問一遍\n你會等待還是離開",
-  "五月天 - 知足": "怎麼去擁有一道彩虹\n怎麼去擁抱一夏天的風\n天上的星星笑地上的人\n總是不能懂不能覺得足夠\n\n如果我愛上你的笑容\n要怎麼收藏要怎麼擁有\n如果你快樂再不是為我\n會不會放手其實才是擁有\n\n當一陣風吹來風箏飛上天空\n為了你而祈禱而祝福而感動\n終於你身影消失在人海盡頭\n才發現笑著哭最痛",
-  "周杰倫 - 稻香": "對這個世界如果你有太多的抱怨\n跌倒了就不敢繼續往前走\n為什麼人要這麼的脆弱 墮落\n\n請你打開電視看看\n多少人為生命在努力勇敢的走下去\n我們是不是該知足\n珍惜一切 就算沒有擁有\n\n還記得你說家是唯一的城堡\n隨著稻香河流繼續奔跑\n微微笑 小時候的夢我知道\n\n不要哭讓螢火蟲帶著你逃跑\n鄉間的歌謠永遠的依靠\n回家吧 回到最初的美好",
-};
-
-function updateLyrics(song, artist) {
-  const key = `${artist} - ${song}`;
-  const text = lyricsDB[key] || "暫無歌詞，靜心聆聽音樂吧～ 🎵\n\n（歌詞庫持續擴充中）";
-  $("lyricsText").textContent = text;
+async function updateLyrics(song, artist) {
+  $("lyricsText").textContent = "正在載入歌詞…… 🎵";
   $("lyricsWrap").hidden = false;
   $("lyricsContent").classList.add("collapsed");
   $("btnToggleLyrics").textContent = "展開 ▼";
+
+  try {
+    const res = await fetch(`/api/lyrics?song=${encodeURIComponent(song)}&artist=${encodeURIComponent(artist)}`);
+    const data = await res.json();
+    const text = data.lyrics?.trim()
+      ? data.lyrics
+      : "暫無歌詞，靜心聆聽音樂吧～ 🎵\n\n（歌詞庫持續擴充中）";
+    $("lyricsText").textContent = text;
+  } catch (err) {
+    console.warn("載入歌詞失敗", err);
+    $("lyricsText").textContent = "暫無歌詞，靜心聆聽音樂吧～ 🎵\n\n（歌詞庫持續擴充中）";
+  }
 }
 
 function toggleLyrics() {
@@ -361,28 +364,28 @@ function togglePlayPause() {
   }
 }
 
-function playNext() {
+async function playNext() {
   if (browseSongs.length > 0 && currentBrowseIndex >= 0) {
     // 瀏覽模式：播放下一首
     currentBrowseIndex = (currentBrowseIndex + 1) % browseSongs.length;
     const next = browseSongs[currentBrowseIndex];
     $("songSelect").value = next.videoId;
-    playBrowseSelection(next.videoId);
-    updateLyrics(next.songName || next.title, $("songArtist").textContent.replace(/^.*請從下方選擇一首\s*/, "").trim());
+    await playBrowseSelection(next.videoId);
+    await updateLyrics(next.songName || next.title, $("songArtist").textContent.replace(/^.*請從下方選擇一首\s*/, "").trim());
   } else {
     // 非瀏覽模式：觸發隨機心情推薦
     const moods = ["開心", "難過", "生氣", "想睡", "緊張", "無聊"];
-    handleMood(moods[Math.floor(Math.random() * moods.length)]);
+    await handleMood(moods[Math.floor(Math.random() * moods.length)]);
   }
 }
 
-function playPrev() {
+async function playPrev() {
   if (browseSongs.length > 0 && currentBrowseIndex > 0) {
     currentBrowseIndex = currentBrowseIndex - 1;
     const prev = browseSongs[currentBrowseIndex];
     $("songSelect").value = prev.videoId;
-    playBrowseSelection(prev.videoId);
-    updateLyrics(prev.songName || prev.title, $("songArtist").textContent.replace(/^.*請從下方選擇一首\s*/, "").trim());
+    await playBrowseSelection(prev.videoId);
+    await updateLyrics(prev.songName || prev.title, $("songArtist").textContent.replace(/^.*請從下方選擇一首\s*/, "").trim());
   }
 }
 
@@ -455,7 +458,7 @@ $("btnToggleLyrics").addEventListener("click", (e) => {
 });
 
 // 點唱牆點擊：在本頁播放器直接播放
-$("wallList").addEventListener("click", (e) => {
+$("wallList").addEventListener("click", async (e) => {
   const songEl = e.target.closest(".wall-song");
   if (!songEl) return;
   const videoId = songEl.dataset.videoId;
@@ -464,7 +467,7 @@ $("wallList").addEventListener("click", (e) => {
   if (!videoId || !song || !artist) return;
   playVideo(videoId);
   showResultCard({ title: `《${song}》`, artist, reason: "", hideBrowse: true });
-  updateLyrics(song, artist);
+  await updateLyrics(song, artist);
 });
 
 // 頁面載入：讀取點唱牆
