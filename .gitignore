@@ -12,3 +12,7 @@ test-screenshots2/
 mood-jukebox-*.png
 .playwright-mcp/
 deno.lock
+test-report.json
+
+# 舊版規劃書（保留歷史參考，但不進版本控制）
+(Gemini當初建議)Mood_Jukebox_Project_Plan_專案規劃書.md
