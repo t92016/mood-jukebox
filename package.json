@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "netlify dev",
+    "dev": "vercel dev",
     "seed": "node scripts/seed-cache.mjs"
   },
   "devDependencies": {
     "firebase": "^10.12.2",
-    "netlify-cli": "^17.0.0"
+    "vercel": "^37.0.0"
   }
 }
