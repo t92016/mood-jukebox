@@ -1,10 +1,10 @@
 // ============================================================
-// 心情點唱機 前端主邏輯 v2
+// 心情點唱機 前端主邏輯 v5
 // 流程：心情輸入 → /api/recommend (Groq) → Firestore 快取檢查
 //       → （無快取時）/api/youtube-search → 寫入快取 + 心情日誌
-//       → YouTube IFrame 播放
+//       → YouTube IFrame 播放 + /api/lyrics 動態歌詞
 // ============================================================
-console.log("[Mood Jukebox] app.js v2 loaded");
+console.log("[Mood Jukebox] app.js v5 loaded — lyrics support enabled");
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -313,20 +313,25 @@ let currentBrowseIndex = -1;
 let isPlaying = false;
 
 async function updateLyrics(song, artist) {
+  console.log(`[Lyrics] 載入: ${artist} - ${song}`);
   $("lyricsText").textContent = "正在載入歌詞…… 🎵";
   $("lyricsWrap").hidden = false;
   $("lyricsContent").classList.add("collapsed");
   $("btnToggleLyrics").textContent = "展開 ▼";
 
   try {
-    const res = await fetch(`/api/lyrics?song=${encodeURIComponent(song)}&artist=${encodeURIComponent(artist)}`);
+    const url = `/api/lyrics?song=${encodeURIComponent(song)}&artist=${encodeURIComponent(artist)}`;
+    console.log(`[Lyrics] API: ${url}`);
+    const res = await fetch(url);
+    console.log(`[Lyrics] 狀態: ${res.status}`);
     const data = await res.json();
+    console.log(`[Lyrics] 回傳長度: ${data.lyrics?.length ?? 0}`);
     const text = data.lyrics?.trim()
       ? data.lyrics
       : "暫無歌詞，靜心聆聽音樂吧～ 🎵\n\n（歌詞庫持續擴充中）";
     $("lyricsText").textContent = text;
   } catch (err) {
-    console.warn("載入歌詞失敗", err);
+    console.warn("[Lyrics] 載入失敗", err);
     $("lyricsText").textContent = "暫無歌詞，靜心聆聽音樂吧～ 🎵\n\n（歌詞庫持續擴充中）";
   }
 }

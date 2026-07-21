@@ -75,12 +75,12 @@ export default async (req) => {
 
   const params = new URLSearchParams({
     part: "snippet",
-    q: `${artist} ${song}`,
+    q: `${artist} ${song} MV`,
     type: "video",
     videoCategoryId: "10",   // 限定音樂分類，提高命中率
     safeSearch: "strict",    // 兒童安全：嚴格過濾不當內容
     videoEmbeddable: "true", // 必須可嵌入，避免拿到不能播的影片
-    maxResults: "1",
+    maxResults: "5",
     key: apiKey,
   });
 
@@ -92,7 +92,15 @@ export default async (req) => {
   }
 
   const data = await ytRes.json();
-  const item = data.items?.[0];
+
+  // 過濾掉「歌詞版」「Lyrics」等純文字影片，優先找正常 MV
+  const lyricKeywords = ["歌詞版", "歌詞", "lyrics", "lyric", "字幕", "純歌詞", "動態歌詞", "static lyrics"];
+  const isLyricsVideo = (title) => lyricKeywords.some((kw) => title.toLowerCase().includes(kw.toLowerCase()));
+
+  let item = data.items?.find((i) => i?.id?.videoId && i?.snippet?.title && !isLyricsVideo(i.snippet.title));
+  // 如果全部都被過濾，就回傳第一筆（不強求）
+  if (!item) item = data.items?.[0];
+
   if (!item?.id?.videoId) {
     return Response.json({ error: "找不到這首歌的影片" }, { status: 404 });
   }
