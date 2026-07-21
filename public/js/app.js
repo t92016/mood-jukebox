@@ -1,10 +1,9 @@
 // ============================================================
-// 心情點唱機 前端主邏輯 v7
-// 流程：心情輸入 → /api/recommend (Groq) → Firestore 快取檢查
-//       → （無快取時）/api/youtube-search → 寫入快取 + 心情日誌
-//       → YouTube IFrame 播放 + /api/lyrics 多源歌詞（LRCLIB + lyrics.ovh + 容錯）
+// 心情點唱機 前端主邏輯 v8
+// 流程：心情輸入 → /api/recommend (Groq) → 互動對話選歌 → 確認播放
+//       → Firestore 快取 + 心情日誌 → YouTube IFrame 播放 + 多源歌詞
 // ============================================================
-console.log("[Mood Jukebox] app.js v7 loaded — lyrics with artist fallback");
+console.log("[Mood Jukebox] app.js v8 loaded — interactive chat mode enabled");
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -181,6 +180,12 @@ function escapeHtml(str) {
 // ---------- 瀏覽模式暫存 ----------
 let browseSongs = []; // { videoId, title, songName }
 
+// ---------- 互動對話模式狀態 ----------
+let chatHistory = [];     // Groq messages 陣列
+let chatMode = false;     // 是否正在對話中
+let pendingRec = null;    // 當前推薦的歌曲（等使用者確認）
+let lastMoodText = "";    // 原始心情輸入文字（寫入日誌用）
+
 // ---------- 顯示結果卡共用函式 ----------
 function showResultCard({ label, title, artist, reason, hideBrowse }) {
   $("resultLabel").textContent = label ?? "🎁 為你點播";
@@ -193,6 +198,130 @@ function showResultCard({ label, title, artist, reason, hideBrowse }) {
   $("resultArea").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+// ---------- 互動對話模式 ----------
+function startChat(rec, moodText) {
+  chatMode = true;
+  pendingRec = rec;
+  lastMoodText = moodText;
+
+  // 初始化對話歷史
+  chatHistory = [
+    { role: "system", content: "你是「心情點唱機」的 AI 點歌員，專門跟國小高年級學生聊天、推薦歌曲。每次只推薦一首歌。如果使用者說換一首，你就換不同歌。只推薦真實存在的知名歌曲。輸出 JSON:{\"reply\":\"對話文字\",\"song\":\"歌名\",\"artist\":\"歌手\",\"reason\":\"推薦理由\"}" },
+    { role: "user", content: moodText },
+    { role: "assistant", content: JSON.stringify({ reply: rec.reply, song: rec.song, artist: rec.artist, reason: rec.reason }) },
+  ];
+
+  // 顯示對話 UI、隱藏播放器
+  $("resultArea").hidden = false;
+  $("chatWrap").hidden = false;
+  $("playerView").hidden = true;
+  $("chatMessages").innerHTML = "";
+  $("chatInput").value = "";
+  $("chatInput").disabled = false;
+  $("chatSendBtn").disabled = false;
+
+  // 顯示 AI 第一條訊息
+  addChatBubble("ai", rec.reply, rec);
+  hideStatus();
+  $("resultArea").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function addChatBubble(role, text, rec = null) {
+  const container = $("chatMessages");
+  const bubble = document.createElement("div");
+  bubble.className = `chat-bubble ${role}`;
+
+  const p = document.createElement("p");
+  p.textContent = text;
+  bubble.appendChild(p);
+
+  // AI 訊息附帶操作按鈕
+  if (role === "ai" && rec) {
+    const actions = document.createElement("div");
+    actions.className = "chat-actions";
+
+    const btnPlay = document.createElement("button");
+    btnPlay.className = "chat-action-btn primary";
+    btnPlay.textContent = "▶ 播放這首";
+    btnPlay.addEventListener("click", () => confirmPlay());
+
+    const btnChange = document.createElement("button");
+    btnChange.className = "chat-action-btn secondary";
+    btnChange.textContent = "🔄 換一首";
+    btnChange.addEventListener("click", () => sendChatMessage("幫我換一首"));
+
+    actions.appendChild(btnPlay);
+    actions.appendChild(btnChange);
+    bubble.appendChild(actions);
+  }
+
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendChatMessage(userText) {
+  if (!userText.trim()) return;
+
+  // 顯示使用者訊息
+  addChatBubble("user", userText);
+  chatHistory.push({ role: "user", content: userText });
+
+  // 暫時鎖定輸入
+  $("chatInput").disabled = true;
+  $("chatSendBtn").disabled = true;
+  showStatus("🤖 AI 正在思考……");
+
+  try {
+    const rec = await postJSON("/api/recommend", { messages: chatHistory, intent: "recommend" });
+
+    // 更新歷史與待播歌曲
+    chatHistory.push({
+      role: "assistant",
+      content: JSON.stringify({ reply: rec.reply, song: rec.song, artist: rec.artist, reason: rec.reason }),
+    });
+    pendingRec = rec;
+
+    // 顯示 AI 回覆
+    addChatBubble("ai", rec.reply, rec);
+    hideStatus();
+  } catch (err) {
+    console.error(err);
+    showStatus(`😴 ${err.message || "AI 打盹了，請再試一次"}`);
+  } finally {
+    $("chatInput").disabled = false;
+    $("chatSendBtn").disabled = false;
+    $("chatInput").focus();
+    setBusy(false);
+  }
+}
+
+async function confirmPlay() {
+  if (!pendingRec) return;
+  const { song, artist, reason } = pendingRec;
+
+  // 切換回播放器畫面
+  chatMode = false;
+  $("chatWrap").hidden = true;
+  $("playerView").hidden = false;
+
+  // 顯示歌曲資訊
+  showResultCard({ title: `《${song}》`, artist, reason });
+
+  // 載入影片
+  let videoId = await lookupCache(song, artist);
+  if (!videoId) {
+    const yt = await postJSON("/api/youtube-search", { song, artist });
+    videoId = yt.videoId;
+    await saveCache(song, artist, videoId, yt.title);
+  }
+
+  playVideo(videoId);
+  await updateLyrics(song, artist);
+
+  // 寫入日誌
+  logMood(lastMoodText, pendingRec, videoId).then(loadWall).catch(() => {});
+}
+
 // ---------- 主流程 ----------
 async function handleMood(mood) {
   setBusy(true);
@@ -203,7 +332,6 @@ async function handleMood(mood) {
   showStatus("🔮 正在感受你的心情……");
 
   try {
-    // 1. Groq AI 判斷意圖
     const rec = await postJSON("/api/recommend", { mood });
     const intent = rec.intent || "recommend";
 
@@ -211,13 +339,11 @@ async function handleMood(mood) {
     if (intent === "play") {
       showStatus("🎧 找到了！準備唱片中……");
       let videoId = await lookupCache(rec.song, rec.artist);
-
       if (!videoId) {
         const yt = await postJSON("/api/youtube-search", { song: rec.song, artist: rec.artist });
         videoId = yt.videoId;
         await saveCache(rec.song, rec.artist, videoId, yt.title);
       }
-
       logMood(mood, rec, videoId).then(loadWall).catch(() => {});
       showResultCard({ title: `《${rec.song}》`, artist: rec.artist, reason: rec.reason });
       playVideo(videoId);
@@ -229,14 +355,11 @@ async function handleMood(mood) {
     if (intent === "browse") {
       showStatus(`🎹 正在搜尋 ${rec.artist} 的歌曲……`);
       const yt = await postJSON("/api/youtube-search", { mode: "browse", artist: rec.artist });
-
       browseSongs = yt.items.map((it) => ({
         videoId: it.videoId,
         title: it.title,
         songName: extractSongName(it.title),
       }));
-
-      // 填充下拉選單
       const select = $("songSelect");
       browseSongs.forEach((s) => {
         const opt = document.createElement("option");
@@ -244,7 +367,6 @@ async function handleMood(mood) {
         opt.textContent = s.title;
         select.appendChild(opt);
       });
-
       showResultCard({
         label: `🎤 ${rec.artist} 的歌曲`,
         title: "",
@@ -252,26 +374,13 @@ async function handleMood(mood) {
         reason: "",
         hideBrowse: false,
       });
-      // 保存原始查詢 artist，供 browse 選歌後解析真正的歌手名
       $("songArtist").dataset.queryArtist = rec.artist;
       updateControlsState();
       return;
     }
 
-    // ===== 意圖 C：依心情推薦（原有邏輯） =====
-    showStatus("🎧 找到了！準備唱片中……");
-    let videoId = await lookupCache(rec.song, rec.artist);
-
-    if (!videoId) {
-      const yt = await postJSON("/api/youtube-search", { song: rec.song, artist: rec.artist });
-      videoId = yt.videoId;
-      await saveCache(rec.song, rec.artist, videoId, yt.title);
-    }
-
-    logMood(mood, rec, videoId).then(loadWall).catch(() => {});
-    showResultCard({ title: `《${rec.song}》`, artist: rec.artist, reason: rec.reason });
-    playVideo(videoId);
-    await updateLyrics(rec.song, rec.artist);
+    // ===== 意圖 C：依心情推薦 → 進入互動對話 =====
+    startChat(rec, mood);
   } catch (err) {
     console.error(err);
     showStatus(`😴 ${err.message || "點唱機打盹了，再試一次吧！"}`);
@@ -490,9 +599,33 @@ $("wallList").addEventListener("click", async (e) => {
   const song = songEl.dataset.song;
   const artist = songEl.dataset.artist;
   if (!videoId || !song || !artist) return;
+  // 確保播放器視圖顯示、聊天視圖隱藏
+  chatMode = false;
+  $("chatWrap").hidden = true;
+  $("playerView").hidden = false;
   playVideo(videoId);
   showResultCard({ title: `《${song}》`, artist, reason: "", hideBrowse: true });
   await updateLyrics(song, artist);
+});
+
+// 聊天輸入事件綁定
+$("chatSendBtn").addEventListener("click", () => {
+  const text = $("chatInput").value.trim();
+  if (text) {
+    sendChatMessage(text);
+    $("chatInput").value = "";
+  }
+});
+
+$("chatInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    const text = $("chatInput").value.trim();
+    if (text) {
+      sendChatMessage(text);
+      $("chatInput").value = "";
+    }
+  }
 });
 
 // 頁面載入：讀取點唱牆
