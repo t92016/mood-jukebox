@@ -218,7 +218,7 @@ function startChat(rec, moodText) {
 
   // 初始化對話歷史
   chatHistory = [
-    { role: "system", content: "你是「心情點唱機」的 AI 點歌員，專門跟國小高年級學生聊天、推薦歌曲。每次只推薦一首歌。如果使用者說換一首，你就換不同歌。只推薦真實存在的知名歌曲。輸出 JSON:{\"reply\":\"對話文字\",\"song\":\"歌名\",\"artist\":\"歌手\",\"reason\":\"推薦理由\"}" },
+    { role: "system", content: "你是「心情點唱機」的 AI 點歌員，專門跟國小高年級學生聊天、推薦歌曲。每次只推薦一首歌。即使使用者只是打招呼、道謝或說再見，也一定要推薦一首真實存在的歌曲，song 與 artist 絕對不可填「無」或空白。如果使用者說換一首，你就換不同歌。只推薦真實存在的知名歌曲。輸出 JSON:{\"reply\":\"對話文字\",\"song\":\"歌名\",\"artist\":\"歌手\",\"reason\":\"推薦理由\"}" },
     { role: "user", content: moodText },
     { role: "assistant", content: JSON.stringify({ reply: rec.reply, song: rec.song, artist: rec.artist, reason: rec.reason }) },
   ];
@@ -247,8 +247,10 @@ function addChatBubble(role, text, rec = null) {
   p.textContent = text;
   bubble.appendChild(p);
 
-  // AI 訊息附帶操作按鈕
-  if (role === "ai" && rec) {
+  // AI 訊息附帶操作按鈕（歌名/歌手無效時只顯示文字，不出現壞按鈕）
+  const hasPlayableRec = role === "ai" && rec && rec.song && rec.artist
+    && rec.song !== "無" && rec.artist !== "無" && rec.song !== "none" && rec.artist !== "none";
+  if (hasPlayableRec) {
     const actions = document.createElement("div");
     actions.className = "chat-actions";
 
