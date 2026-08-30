@@ -155,6 +155,24 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* 狀態列的「再試一次」按鈕 */
+.status-retry-btn {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: inherit;
+  border: none;
+  border-radius: 999px;
+  background: var(--pink-deep);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
+}
+
+.status-retry-btn:hover { background: #ff7a99; transform: scale(1.05); }
+.status-retry-btn:active { transform: scale(0.95); }
+
 /* ---------- 歌曲結果卡 ---------- */
 .result-area { margin-top: 1.5rem; }
 
@@ -448,6 +466,14 @@ body {
   color: #fff;
   align-self: flex-end;
   border-bottom-right-radius: 4px;
+}
+
+/* AI 失敗時的重試氣泡 */
+.chat-bubble.retry {
+  background: #fff;
+  border: 2px dashed var(--pink);
+  color: var(--ink-light);
+  font-size: 0.9rem;
 }
 
 .chat-actions {

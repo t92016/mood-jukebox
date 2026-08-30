@@ -19,6 +19,71 @@ async function readJSON(req) {
   }
 }
 
+// Helper: 等待指定毫秒數（重試用）
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Helper: 呼叫 Groq API；HTTP 錯誤時丟出帶 isHttpError 標記的錯誤
+async function callGroq(apiKey, messages, temperature) {
+  const groqRes = await fetch(GROQ_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages,
+      temperature,
+      max_tokens: 256,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!groqRes.ok) {
+    const text = await groqRes.text();
+    const err = new Error(`Groq API error ${groqRes.status}: ${text}`);
+    err.isHttpError = true;
+    err.httpStatus = groqRes.status;
+    throw err;
+  }
+
+  return groqRes.json();
+}
+
+// Helper: 解析 Groq 回應成推薦結果（缺欄位就丟錯，交給重試機制）
+function extractRec(data) {
+  const content = data.choices?.[0]?.message?.content ?? "";
+  const parsed = JSON.parse(content);
+  if (!parsed.song || !parsed.artist) {
+    throw new Error("AI 回傳缺少 song 或 artist 欄位");
+  }
+  return parsed;
+}
+
+// Helper: 帶重試的 Groq 呼叫（最多 3 次，遞增等待）
+// Groq 免費層偶發 429（速率限制）/ 503（模型過載），HTTP 錯誤也必須重試才不會讓使用者看到失敗
+async function callGroqWithRetry(apiKey, messages, temperature, label) {
+  let lastErr = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const data = await callGroq(apiKey, messages, temperature);
+      return extractRec(data);
+    } catch (err) {
+      lastErr = err;
+      console.warn(`${label} attempt ${attempt} failed:`, err.message);
+      if (attempt < 3) await sleep(600 * attempt); // 等 0.6s → 1.2s 再試
+    }
+  }
+  throw lastErr;
+}
+
+// Helper: 依最後一次錯誤類型決定給前端的錯誤訊息
+function friendlyError(err) {
+  return err && err.isHttpError
+    ? "AI 服務暫時休息中，請稍後再試"
+    : "點唱機打盹了，請再試一次";
+}
+
 // 簡易意圖分類器：比 AI 更可靠，先判斷 obvious 情況
 function classifyIntent(input) {
   const m = input.trim();
@@ -42,8 +107,14 @@ function classifyIntent(input) {
   const dashParts = m.split(/[-–—]/);
   if (dashParts.length === 2 && dashParts.every(hasChinese)) return "play";
 
-  const moodWords = ["開心", "難過", "生氣", "緊張", "無聊", "想睡", "累", "悶", "煩", "傷心", "難受", "興奮", "激動", "平靜", "放鬆", "壓力", "考試", "成績", "朋友", "家人", "愛", "喜歡", "討厭", "害怕", "擔心", "焦慮", "憤怒", "失落", "沮喪", "疲憊", "舒服", "溫暖", "感動", "驕傲", "自信", "勇敢", "堅強", "快樂"];
+  const moodWords = ["開心", "難過", "生氣", "緊張", "無聊", "想睡", "累", "悶", "煩", "傷心", "難受", "興奮", "激動", "平靜", "放鬆", "壓力", "考試", "成績", "朋友", "家人", "愛", "喜歡", "討厭", "害怕", "擔心", "焦慮", "憤怒", "失落", "沮喪", "疲憊", "舒服", "溫暖", "感動", "驕傲", "自信", "勇敢", "堅強", "快樂", "開學", "上課", "放學", "放假", "月考", "期末考", "段考", "小考", "考完", "考卷", "作業", "委屈", "孤單", "寂寞", "放空", "厭世", "無力", "想家", "期待", "羨慕", "想念", "捨不得", "好好笑", "療癒"];
   const isMood = moodWords.some((w) => m.includes(w));
+
+  // 對話用語（打招呼、道謝、告別、換歌等）不是歌手名，一律交給 AI 走聊天推薦，
+  // 避免像「再見」這種短詞被誤判成歌手瀏覽，跑出空的歌單
+  const chatWords = ["再見", "拜拜", "你好", "您好", "哈囉", "嗨嗨", "謝謝", "感謝", "不客氣", "對不起", "抱歉", "辛苦", "加油", "換一首", "換首歌", "換歌", "下一首", "不要了", "隨便", "都可以", "沒事", "在嗎"];
+  if (chatWords.some((w) => m.includes(w))) return "recommend";
+
   if (!isMood && !m.includes(" ") && m.length >= 2 && m.length <= 8) {
     return "browse";
   }
@@ -90,49 +161,19 @@ export default async (req, res) => {
       return res.status(500).json({ error: "點唱機還沒準備好，請稍後再試" });
     }
 
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const groqRes = await fetch(GROQ_URL, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: MODEL,
-            messages: body.messages,
-            temperature: 0.8,
-            max_tokens: 256,
-            response_format: { type: "json_object" },
-          }),
-        });
-
-        if (!groqRes.ok) {
-          const text = await groqRes.text();
-          console.error(`Groq API error ${groqRes.status}:`, text);
-          return res.status(502).json({ error: "AI 服務暫時休息中，請稍後再試" });
-        }
-
-        const data = await groqRes.json();
-        const content = data.choices?.[0]?.message?.content ?? "";
-        const parsed = JSON.parse(content);
-
-        if (!parsed.song || !parsed.artist) {
-          throw new Error("AI 回傳缺少 song 或 artist 欄位");
-        }
-
-        return res.json({
-          intent: body.intent || "recommend",
-          reply: String(parsed.reply ?? ""),
-          song: String(parsed.song),
-          artist: String(parsed.artist),
-          reason: String(parsed.reason ?? ""),
-        });
-      } catch (err) {
-        console.warn(`chat attempt ${attempt} failed:`, err);
-      }
+    try {
+      const parsed = await callGroqWithRetry(apiKey, body.messages, 0.8, "chat");
+      return res.json({
+        intent: body.intent || "recommend",
+        reply: String(parsed.reply ?? ""),
+        song: String(parsed.song),
+        artist: String(parsed.artist),
+        reason: String(parsed.reason ?? ""),
+      });
+    } catch (err) {
+      console.error("chat all attempts failed:", err.message);
+      return res.status(502).json({ error: friendlyError(err) });
     }
-    return res.status(502).json({ error: "點唱機打盹了，請再試一次" });
   }
 
   // ===== 模式 B：單輪輸入（mood 字串，向後相容）=====
@@ -155,51 +196,25 @@ export default async (req, res) => {
 
   const systemPrompt = intent === "play" ? PLAY_PROMPT : CHAT_PROMPT;
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      const groqRes = await fetch(GROQ_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: MODEL,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: mood },
-          ],
-          temperature: 0.7,
-          max_tokens: 256,
-          response_format: { type: "json_object" },
-        }),
-      });
-
-      if (!groqRes.ok) {
-        const text = await groqRes.text();
-        console.error(`Groq API error ${groqRes.status}:`, text);
-        return res.status(502).json({ error: "AI 服務暫時休息中，請稍後再試" });
-      }
-
-      const data = await groqRes.json();
-      const content = data.choices?.[0]?.message?.content ?? "";
-      const parsed = JSON.parse(content);
-
-      if (!parsed.song || !parsed.artist) {
-        throw new Error("AI 回傳缺少 song 或 artist 欄位");
-      }
-
-      return res.json({
-        intent,
-        reply: String(parsed.reply ?? ""),
-        song: String(parsed.song),
-        artist: String(parsed.artist),
-        reason: String(parsed.reason ?? ""),
-      });
-    } catch (err) {
-      console.warn(`recommend attempt ${attempt} failed:`, err);
-    }
+  try {
+    const parsed = await callGroqWithRetry(
+      apiKey,
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: mood },
+      ],
+      0.7,
+      "recommend"
+    );
+    return res.json({
+      intent,
+      reply: String(parsed.reply ?? ""),
+      song: String(parsed.song),
+      artist: String(parsed.artist),
+      reason: String(parsed.reason ?? ""),
+    });
+  } catch (err) {
+    console.error("recommend all attempts failed:", err.message);
+    return res.status(502).json({ error: friendlyError(err) });
   }
-
-  return res.status(502).json({ error: "點唱機打盹了，請再試一次" });
 };

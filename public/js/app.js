@@ -71,6 +71,18 @@ function showStatus(msg) {
 
 function hideStatus() {
   $("statusArea").hidden = true;
+  $("statusRetryBtn").hidden = true;
+}
+
+// 顯示錯誤訊息並附上「再試一次」按鈕（點按鈕時執行 retryFn）
+function showRetryStatus(msg, retryFn) {
+  showStatus(msg);
+  const btn = $("statusRetryBtn");
+  btn.hidden = false;
+  btn.onclick = () => {
+    btn.hidden = true;
+    retryFn();
+  };
 }
 
 function setBusy(busy) {
@@ -262,10 +274,19 @@ function addChatBubble(role, text, rec = null) {
 async function sendChatMessage(userText) {
   if (!userText.trim()) return;
 
+  // 若畫面上有上一次失敗留下的重試氣泡，先移除
+  document.querySelectorAll(".chat-bubble.retry").forEach((b) => b.remove());
+
   // 顯示使用者訊息
   addChatBubble("user", userText);
   chatHistory.push({ role: "user", content: userText });
 
+  await requestAIReply();
+}
+
+// 帶著目前 chatHistory 向後端要一次 AI 回覆
+// （chatHistory 已含使用者訊息，重試時不會重複送出）
+async function requestAIReply() {
   // 暫時鎖定輸入
   $("chatInput").disabled = true;
   $("chatSendBtn").disabled = true;
@@ -286,13 +307,39 @@ async function sendChatMessage(userText) {
     hideStatus();
   } catch (err) {
     console.error(err);
-    showStatus(`😴 ${err.message || "AI 打盹了，請再試一次"}`);
+    addRetryBubble(err.message || "AI 打盹了，請再試一次");
   } finally {
     $("chatInput").disabled = false;
     $("chatSendBtn").disabled = false;
     $("chatInput").focus();
     setBusy(false);
   }
+}
+
+// 對話區的失敗氣泡：附「再試一次」按鈕，不再是只有狀態列小字的假卡死
+function addRetryBubble(errMsg) {
+  const container = $("chatMessages");
+  const bubble = document.createElement("div");
+  bubble.className = "chat-bubble ai retry";
+
+  const p = document.createElement("p");
+  p.textContent = `😵 ${errMsg}`;
+  bubble.appendChild(p);
+
+  const actions = document.createElement("div");
+  actions.className = "chat-actions";
+  const btnRetry = document.createElement("button");
+  btnRetry.className = "chat-action-btn primary";
+  btnRetry.textContent = "🔄 再試一次";
+  btnRetry.addEventListener("click", () => {
+    bubble.remove();
+    requestAIReply();
+  });
+  actions.appendChild(btnRetry);
+  bubble.appendChild(actions);
+
+  container.appendChild(bubble);
+  container.scrollTop = container.scrollHeight;
 }
 
 async function confirmPlay() {
@@ -324,6 +371,13 @@ async function confirmPlay() {
 
 // ---------- 主流程 ----------
 async function handleMood(mood) {
+  // 修正：聊天進行中若用上方心情輸入重新點歌，先收起聊天 UI，避免兩個區塊疊加
+  if (chatMode) {
+    chatMode = false;
+    $("chatWrap").hidden = true;
+    pendingRec = null;
+  }
+
   setBusy(true);
   $("resultArea").hidden = true;
   browseSongs = [];
@@ -383,7 +437,7 @@ async function handleMood(mood) {
     startChat(rec, mood);
   } catch (err) {
     console.error(err);
-    showStatus(`😴 ${err.message || "點唱機打盹了，再試一次吧！"}`);
+    showRetryStatus(`😴 ${err.message || "點唱機打盹了，再試一次吧！"}`, () => handleMood(mood));
   } finally {
     setBusy(false);
   }
